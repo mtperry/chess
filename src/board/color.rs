@@ -1,6 +1,6 @@
-#![allow(dead_code)]
+#[allow(dead_code)]
 
-use std::ops::Not;
+use std::ops::{Not, Index, IndexMut};
 use std::str::FromStr;
 
 use crate::error::Error;
@@ -12,31 +12,37 @@ pub enum Color {
     Black
 }
 
-const NUM_COLORS: usize = 2;
-const ALL_COLORS: [Color; NUM_COLORS] = [
-    Color::White,
-    Color::Black
-];
-
 impl Color {
-    pub fn from_index(value: usize) -> Self {
-        match value % NUM_COLORS {
+    pub const COUNT: usize = 2;
+    pub const VARIANTS: [Color; Color::COUNT] = [
+        Color::White,
+        Color::Black
+    ];
+
+    pub const fn from_u8(value: u8) -> Self {
+        match value % Color::COUNT as u8 {
             0 => Color::White,
             1 => Color::Black,
             _ => unreachable!()
         }
     }
 
-    pub fn try_from_index(value: usize) -> Result<Self, Error> {
-        if value < NUM_COLORS {
-            Ok(Color::from_index(value))
-        } else {
-            Err(Error::InvalidColor)
-        }
+    pub const fn to_u8(self) -> u8 {
+        self as u8
     }
+}
 
-    pub fn to_index(self) -> usize {
-        self as usize
+impl<T> Index<Color> for [T] {
+    type Output = T;
+
+    fn index(&self, color: Color) -> &Self::Output {
+        &self[color as usize]
+    }
+}
+
+impl<T> IndexMut<Color> for [T] {
+    fn index_mut(&mut self, color: Color) -> &mut Self::Output {
+        &mut self[color as usize]
     }
 }
 
@@ -69,36 +75,30 @@ mod tests {
     use super::*;
 
     #[test]
-    fn from_index_on_all_indices_less_than_num_colors_returns_correct_color() {
-        for i in 0..NUM_COLORS {
-            assert_eq!(Color::from_index(i), ALL_COLORS[i]);
-        }
+    fn from_u8() {
+        assert_eq!(Color::from_u8(0), Color::White);
+        assert_eq!(Color::from_u8(1), Color::Black);
+        assert_eq!(Color::from_u8(2), Color::White);
+        assert_eq!(Color::from_u8(3), Color::Black);
     }
 
     #[test]
-    fn from_index_on_indices_greater_than_num_colors_wraps() {
-        assert_eq!(Color::from_index(NUM_COLORS), Color::White);
-        assert_eq!(Color::from_index(NUM_COLORS + 1), Color::Black);
+    fn to_u8() {
+        assert_eq!(Color::White.to_u8(), 0);
+        assert_eq!(Color::Black.to_u8(), 1);
     }
 
     #[test]
-    fn try_from_index_on_indexes_less_than_num_colors_return_correct_color() {
-        for i in 0..NUM_COLORS {
-            assert_eq!(Color::try_from_index(i).unwrap(), Color::from_index(i));
-        }
-    }
-    
-    #[test]
-    fn try_from_index_on_invalid_indices_returns_invalid_color() {
-        assert_eq!(Color::try_from_index(NUM_COLORS).err(), Some(Error::InvalidColor));
-        assert_eq!(Color::try_from_index(NUM_COLORS + 1).err(), Some(Error::InvalidColor));
+    fn from_str_on_valid_input_returns_correct_color() {
+        assert_eq!(Color::from_str("w").unwrap(), Color::White);
+        assert_eq!(Color::from_str("W").unwrap(), Color::White);
+        assert_eq!(Color::from_str("b").unwrap(), Color::Black);
+        assert_eq!(Color::from_str("B").unwrap(), Color::Black);
     }
 
     #[test]
-    fn to_index_on_both_colors() {
-        for(i, color) in ALL_COLORS.iter().copied().enumerate() {
-            assert_eq!(color.to_index(), i)
-        }
+    fn from_str_on_invalid_input_returns_invalid_color() {
+        assert_eq!(Color::from_str("x").err(), Some(Error::InvalidColor));
     }
 
     #[test]
